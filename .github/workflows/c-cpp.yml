@@ -1,0 +1,39 @@
+name: C/C++ CI
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v2
+    - name: apt-update
+      run: apt update
+    - name: install package
+      run: apt install build-essential cmake libuv1-dev libssl-dev libhwloc-dev
+    - name: make build directory
+      run: mkdir build
+    - name: make Dockerfile
+      run: |
+        cat > Dockerfile <<EOF
+        FROM ubuntu:20.04
+        COPY . .
+        EOF
+    - name: cmake
+      run: cmake ..
+      working-directory: build
+    - name: make
+      run: make -j$(nproc)
+      working-directory: build
+    - name: Docker Setup Buildx
+      uses: docker/setup-buildx-action@v1.6.0
+    - name: Docker Login
+      uses: docker/login-action@v1.10.0
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_TOKEN }}
+    - name: Build Image
+      working-directory: build
+      run: docker buildx build --platform linux/arm64 -t inerplat/xmrig-arm --push .
+          
